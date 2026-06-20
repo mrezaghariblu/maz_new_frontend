@@ -1,11 +1,14 @@
-// src/styles/main.less
+// src/styles/main.scss
 // ================================================================
 // MAZ — مدیریت استثنایی استان زنجان
 // Design tokens: Firouzeh (فیروزه) palette — inspired by Zanjan turquoise stone
 // ================================================================
 
+@use '@angular/material' as mat;
+@use 'sass:map';
+
 // ─── Google Fonts (Vazirmatn) ────────────────────────────────
-@import (css) url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap');
 
 // ─── MAZ Color Tokens ───────────────────────────────────────
 :root {
@@ -255,8 +258,7 @@ input, select, textarea { font-family: var(--maz-font); }
 }
 
 // ─── MAZ Form Controls ──────────────────────────────────────
-// نکته: در LESS از @extend پشتیبانی نمی‌شود؛ به‌جایش mixin تعریف می‌کنیم
-.maz-input-base() {
+.maz-input {
   width: 100%;
   padding: 9px 12px;
   border: 1.5px solid var(--maz-border);
@@ -271,12 +273,8 @@ input, select, textarea { font-family: var(--maz-font); }
   &::placeholder { color: var(--maz-gray-400); }
 }
 
-.maz-input {
-  .maz-input-base();
-}
-
 .maz-select {
-  .maz-input-base();
+  @extend .maz-input;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239ca3af' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -424,5 +422,3 @@ input, select, textarea { font-family: var(--maz-font); }
 // ─── Toast / Snackbar override ──────────────────────────────
 .maz-snack-success .mdc-snackbar__surface { background: var(--maz-firouzeh-800) !important; }
 .maz-snack-error   .mdc-snackbar__surface { background: #991b1b !important; }
-
-
