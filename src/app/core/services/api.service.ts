@@ -8,7 +8,7 @@ import {
   SmartFilterRequest, PagedResult, ExcelExportRequest,
   AcademicYear, Center, User, Student, StatusType,
   PersonnelStatusHistory, StudentStatusHistory, CenterStatusHistory,
-  AuditLog,
+  AuditLog, LookupValue, LookupGroups,
 } from '../models/index';
 
 @Injectable({ providedIn: 'root' })
@@ -56,15 +56,18 @@ export class UsersApi extends ApiService {
 
   list(dto: SmartFilterRequest)       { return this.http.post<PagedResult<User>>(`${this.url}/list`, dto); }
   getOne(id: number)                  { return this.http.get<User>(`${this.url}/${id}`); }
-  create(d: Partial<User> & { password?: string }) { return this.http.post<User>(this.url, d); }
+  create(d: Partial<User> & { password?: string; centerId?: number; academicYearId?: number }) { return this.http.post<User>(this.url, d); }
   update(id: number, d: Partial<User>) { return this.http.patch<User>(`${this.url}/${id}`, d); }
   changePassword(id: number, newPassword: string) {
     return this.http.patch(`${this.url}/${id}/password`, { newPassword });
   }
+  setDisabilities(id: number, items: { disabilityTypeId: number; severity?: string; autismLevel?: number }[]) {
+    return this.http.put(`${this.url}/${id}/disabilities`, { items });
+  }
   assignCenter(id: number, d: { centerId: number; academicYearId: number; isPrimary?: boolean; note?: string }) {
     return this.http.post(`${this.url}/${id}/assign-center`, d);
   }
-  transfer(id: number, d: { fromCenterId: number; toCenterId: number; academicYearId: number; note?: string }) {
+  transfer(id: number, d: { fromCenterId?: number; toCenterId: number; academicYearId: number; note?: string }) {
     return this.http.post(`${this.url}/${id}/transfer`, d);
   }
   revokeAssignment(assignmentId: number) {
@@ -74,6 +77,19 @@ export class UsersApi extends ApiService {
 
   exportExcel(dto: ExcelExportRequest): Observable<Blob> {
     return this.http.post(`${this.url}/export/excel`, dto, { responseType: 'blob' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+
+@Injectable({ providedIn: 'root' })
+export class LookupsApi extends ApiService {
+  private url = `${this.base}/lookups`;
+
+  // همه‌ی گروه‌ها یک‌جا — برای پر کردن همه‌ی dropdownهای یک فرم با یک درخواست
+  getAllGrouped() { return this.http.get<LookupGroups>(this.url); }
+  getByGroup(groupKey: string) {
+    return this.http.get<LookupValue[]>(this.url, { params: { groupKey } });
   }
 }
 

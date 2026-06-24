@@ -222,10 +222,11 @@ import { forkJoin } from 'rxjs';
           </div>
           <div class="modal-body">
             <div class="maz-form-group">
-              <label class="maz-label">مرکز مبدأ</label>
-              <select class="maz-select" [(ngModel)]="transferForm.fromCenterId">
+              <label class="maz-label">مرکز مبدأ <span style="color:var(--maz-gray-400);font-weight:400">(اختیاری)</span></label>
+              <select class="maz-select" [(ngModel)]="transferForm.fromCenterId" name="fromCenterId">
+                <option [ngValue]="0">— تشخیص خودکار —</option>
                 @for (a of activeAssignments(); track a.id) {
-                  <option [value]="a.centerId">{{ a.center?.name }}</option>
+                  <option [ngValue]="a.centerId">{{ a.center?.name }}</option>
                 }
               </select>
             </div>
@@ -318,7 +319,7 @@ export class UserDetailComponent implements OnInit {
     if (!u || !this.transferForm.toCenterId || !yearId) return;
 
     this.usersApi.transfer(u.id, {
-      fromCenterId:   this.transferForm.fromCenterId,
+      fromCenterId:   this.transferForm.fromCenterId ? Number(this.transferForm.fromCenterId) : undefined,
       toCenterId:     Number(this.transferForm.toCenterId),
       academicYearId: yearId,
       note:           this.transferForm.note,

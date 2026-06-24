@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink }   from '@angular/router';
 import { FormsModule }  from '@angular/forms';
-import { CentersApi }   from '../../../core/services/api.service';
+import { CentersApi, LookupsApi } from '../../../core/services/api.service';
 import { AppStateService } from '../../../core/services/app-state.service';
 import { ExcelDownloadService } from '../../../core/services/excel-download.service';
 import { AuthService }  from '../../../core/auth/auth.service';
@@ -11,7 +11,7 @@ import { SmartFilterComponent, FilterField } from '../../../shared/components/sm
 import { ExcelExportDialogComponent, AvailableColumn } from '../../../shared/components/excel-export-dialog/excel-export-dialog.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { FilterCondition, SmartFilterRequest, ExcelExportRequest, Center, PagedResult, CENTER_TYPE_LABEL } from '../../../core/models';
+import { FilterCondition, SmartFilterRequest, ExcelExportRequest, Center, PagedResult, LookupValue } from '../../../core/models';
 
 const FILTER_FIELDS: FilterField[] = [
   { key: 'name',     label: 'نام مرکز',  type: 'string'  },
@@ -19,14 +19,6 @@ const FILTER_FIELDS: FilterField[] = [
   { key: 'city',     label: 'شهر',       type: 'string'  },
   { key: 'province', label: 'استان',     type: 'string'  },
   { key: 'isActive', label: 'فعال',      type: 'boolean' },
-  { key: 'type',     label: 'نوع',       type: 'enum',
-    enumOptions: [
-      { value: 'PRIMARY',    label: 'دبستان'      },
-      { value: 'MIDDLE',     label: 'متوسطه اول'  },
-      { value: 'HIGH',       label: 'دبیرستان'    },
-      { value: 'VOCATIONAL', label: 'هنرستان'     },
-    ],
-  },
 ];
 
 const EXCEL_COLS: AvailableColumn[] = [
@@ -36,6 +28,9 @@ const EXCEL_COLS: AvailableColumn[] = [
   { field: 'province',      header: 'استان',        width: 14 },
   { field: 'city',          header: 'شهر',          width: 12 },
   { field: 'phone',         header: 'تلفن',         width: 14 },
+  { field: 'managerName',   header: 'نام مدیر',     width: 18 },
+  { field: 'managerPhone',  header: 'تلفن مدیر',    width: 14 },
+  { field: 'districtLabel', header: 'ناحیه',        width: 14 },
   { field: 'staffCount',    header: 'پرسنل',        width: 8  },
   { field: 'studentCount',  header: 'دانش‌آموز',    width: 10 },
   { field: 'currentStatus', header: 'وضعیت',        width: 12 },
@@ -74,10 +69,7 @@ const EXCEL_COLS: AvailableColumn[] = [
         [(ngModel)]="quickSearch" (input)="load()" />
       <select class="maz-select" style="width:160px" [(ngModel)]="filterType" (change)="load()">
         <option value="">همه انواع</option>
-        <option value="PRIMARY">دبستان</option>
-        <option value="MIDDLE">متوسطه اول</option>
-        <option value="HIGH">دبیرستان</option>
-        <option value="VOCATIONAL">هنرستان</option>
+        @for (t of centerTypes(); track t.id) { <option [value]="t.id">{{ t.label }}</option> }
       </select>
       <button class="maz-btn maz-btn--gold maz-btn--sm" style="margin-right:auto" (click)="showExcel = true">
         ⬇ Excel
@@ -97,6 +89,7 @@ const EXCEL_COLS: AvailableColumn[] = [
                 <th>کد</th>
                 <th>نوع</th>
                 <th>استان / شهر</th>
+                <th>مدیر مرکز</th>
                 <th style="text-align:center">پرسنل</th>
                 <th style="text-align:center">دانش‌آموز</th>
                 <th>وضعیت</th>
@@ -110,13 +103,23 @@ const EXCEL_COLS: AvailableColumn[] = [
                   <td><strong>{{ c.name }}</strong></td>
                   <td class="maz-text-muted maz-text-sm">{{ c.code }}</td>
                   <td>
-                    <span class="maz-badge maz-badge--info">{{ typeLabel(c.type) }}</span>
+                    <span class="maz-badge maz-badge--info">{{ c.centerType?.label ?? '—' }}</span>
                   </td>
                   <td>
                     <div style="font-size:12px">
                       <div style="font-weight:600">{{ c.province }}</div>
                       <div style="color:var(--maz-gray-400)">{{ c.city }}</div>
                     </div>
+                  </td>
+                  <td>
+                    @if (c.managerName) {
+                      <div style="font-size:12px">
+                        <div style="font-weight:600">{{ c.managerName }}</div>
+                        <div style="color:var(--maz-gray-400)">{{ c.managerPhone ?? '—' }}</div>
+                      </div>
+                    } @else {
+                      <span class="maz-text-muted maz-text-sm">— بدون مدیر —</span>
+                    }
                   </td>
                   <td style="text-align:center;font-weight:700;color:var(--maz-firouzeh-700)">
                     {{ c._count?.userAssignments ?? 0 }}
@@ -148,7 +151,7 @@ const EXCEL_COLS: AvailableColumn[] = [
               }
               @if (!centers().length) {
                 <tr class="maz-table--empty">
-                  <td [colSpan]="9">هیچ مرکزی یافت نشد</td>
+                  <td [colSpan]="10">هیچ مرکزی یافت نشد</td>
                 </tr>
               }
             </tbody>
@@ -186,6 +189,7 @@ const EXCEL_COLS: AvailableColumn[] = [
 })
 export class CentersListComponent implements OnInit {
   private api      = inject(CentersApi);
+  private lookupsApi = inject(LookupsApi);
   private appState = inject(AppStateService);
   private excel    = inject(ExcelDownloadService);
   readonly auth    = inject(AuthService);
@@ -196,6 +200,7 @@ export class CentersListComponent implements OnInit {
   loading  = signal(true);
   result   = signal<PagedResult<Center> | null>(null);
   centers  = computed(() => this.result()?.data ?? []);
+  centerTypes = signal<LookupValue[]>([]);
   page     = signal(1);
   pageSize = 20;
 
@@ -205,7 +210,10 @@ export class CentersListComponent implements OnInit {
   showExcel           = false;
   centerToDeactivate  = signal<Center | null>(null);
 
-  ngOnInit() { this.load(); }
+  ngOnInit() {
+    this.load();
+    this.lookupsApi.getByGroup('CENTER_TYPE').subscribe(t => this.centerTypes.set(t));
+  }
 
   load() {
     this.loading.set(true);
@@ -239,9 +247,7 @@ export class CentersListComponent implements OnInit {
     if (this.quickSearch.trim())
       filters.push({ field: 'name', fieldType: 'string', operator: 'contains', value: this.quickSearch.trim(), order: order++ });
     if (this.filterType)
-      filters.push({ field: 'type', fieldType: 'enum', operator: 'equals', value: this.filterType, order: order++ });
+      filters.push({ field: 'centerTypeId', fieldType: 'number', operator: 'equals', value: this.filterType, order: order++ });
     return { filters, sort: { field: 'name', direction: 'asc' }, page: this.page(), pageSize: this.pageSize };
   }
-
-  typeLabel(t: string) { return CENTER_TYPE_LABEL[t as keyof typeof CENTER_TYPE_LABEL] ?? t; }
 }

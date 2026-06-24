@@ -2,7 +2,7 @@
 // ─── Enums ───────────────────────────────────────────────────
 export type UserType = 'SUPERUSER' | 'CENTER_MANAGER' | 'TEACHER' | 'STAFF' | 'STUDENT';
 export type Gender   = 'MALE' | 'FEMALE';
-export type CenterType = 'PRIMARY' | 'MIDDLE' | 'HIGH' | 'VOCATIONAL';
+export type DisabilitySeverity = 'MILD' | 'MODERATE' | 'SEVERE';
 export type FilterFieldType = 'string' | 'number' | 'date' | 'boolean' | 'enum';
  
 export const USER_TYPE_LABEL: Record<UserType, string> = {
@@ -12,18 +12,26 @@ export const USER_TYPE_LABEL: Record<UserType, string> = {
   STAFF:          'کارمند',
   STUDENT:        'دانش‌آموز',
 };
- 
-export const CENTER_TYPE_LABEL: Record<CenterType, string> = {
-  PRIMARY:    'دبستان',
-  MIDDLE:     'متوسطه اول',
-  HIGH:       'دبیرستان',
-  VOCATIONAL: 'هنرستان',
+
+export const DISABILITY_SEVERITY_LABEL: Record<DisabilitySeverity, string> = {
+  MILD: 'خفیف', MODERATE: 'متوسط', SEVERE: 'شدید',
 };
- 
+
 export const GENDER_LABEL: Record<Gender, string> = {
   MALE:   'مرد',
   FEMALE: 'زن',
 };
+
+// ─── Lookup (مقادیر مرجع با تگ groupKey) ──────────────────────
+export interface LookupValue {
+  id:        number;
+  groupKey:  string;
+  code:      string;
+  label:     string;
+  sortOrder: number;
+  isActive:  boolean;
+}
+export type LookupGroups = Record<string, LookupValue[]>;
  
 // ─── Auth ───────────────────────────────────────────────────
 export interface LoginRequest  { nationalCode: string; password: string; }
@@ -51,33 +59,115 @@ export interface AcademicYear {
   createdAt:  string;
 }
  
+export interface CenterUserAssignment {
+  id:             number;
+  userId:         number;
+  centerId:       number;
+  academicYearId: number;
+  isPrimary:      boolean;
+  assignedAt:     string;
+  revokedAt?:     string;
+  user?:          { id: number; firstName: string; lastName: string; phone?: string; userType: UserType };
+}
+
 // ─── Center ─────────────────────────────────────────────────
 export interface Center {
   id:           number;
   name:         string;
   code:         string;
-  type:         CenterType;
+  centerTypeId: number;
+  centerType?:  LookupValue;
   province:     string;
   city:         string;
+  districtId?:  number;
+  district?:    LookupValue;
   address?:     string;
   phone?:       string;
+  bankAccountNumber?: string;
+  shabaNumber?: string;
+  establishedYear?: number;
+  preSchoolCode?: string;
+  primaryCode?: string;
+  firstMiddleCode?: string;
+  firstMiddleVocationalCode?: string;
+  secondMiddleSpecialVocationalCode?: string;
+  secondMiddleCode?: string;
   isActive:     boolean;
   createdAt:    string;
+  managerName?: string | null;
+  managerPhone?: string | null;
+  userAssignments?: CenterUserAssignment[];
   _count?:      { userAssignments: number; studentEnrollments: number; };
   centerStatuses?: CenterStatusHistory[];
 }
  
+// ─── معلولیت ────────────────────────────────────────────────
+export interface UserDisability {
+  id:               number;
+  userId:           number;
+  disabilityTypeId: number;
+  severity?:        DisabilitySeverity;
+  autismLevel?:     number;
+  disabilityType?:  LookupValue;
+}
+
 // ─── User ───────────────────────────────────────────────────
 export interface User {
   id:           number;
   nationalCode: string;
+  personnelCode?: string;
   firstName:    string;
   lastName:     string;
+  fatherName?:  string;
   gender:       Gender;
   userType:     UserType;
   phone?:       string;
   email?:       string;
   birthDate?:   string;
+  birthDay?:    number;
+  birthMonth?:  number;
+  birthYearShamsi?: number;
+
+  employmentTypeId?: number;
+  employmentType?:   LookupValue;
+  jobPositionId?:    number;
+  jobPosition?:      LookupValue;
+  employmentCategoryId?: number;
+  employmentCategory?:   LookupValue;
+  requiredHours?:    number;
+  nonRequiredHours?: number;
+
+  exceptionalEntryDay?:   number;
+  exceptionalEntryMonth?: number;
+  exceptionalEntryYear?:  number;
+  serviceRecordYears?:    number;
+  serviceRecordMonths?:   number;
+  serviceRecordDays?:     number;
+
+  maritalStatusId?: number;
+  maritalStatus?:   LookupValue;
+  educationDegreeId?: number;
+  educationDegree?:   LookupValue;
+  fieldOfStudy?:    string;
+  isargariStatus?:  string;
+  physicalStatusId?: number;
+  physicalStatus?:   LookupValue;
+
+  address?:          string;
+  bankAccountNumber?: string;
+  shadMobileNumber?: string;
+  shadUsername?:     string;
+  districtId?:       number;
+  district?:         LookupValue;
+
+  willingJudgeCultural?:   boolean;
+  willingJudgeQuranEtrat?: boolean;
+  willingJudgeSports?:     boolean;
+  judgeCertificateField?:  string;
+
+  disabilities?:         UserDisability[];
+  isMultipleDisability?: boolean;
+
   canLogin:     boolean;
   isActive:     boolean;
   createdAt:    string;
