@@ -175,6 +175,112 @@ export interface User {
   personnelStatusHistory?: PersonnelStatusHistory[];
 }
  
+export interface StudentDisability {
+  id:               number;
+  studentId:        number;
+  disabilityTypeId: number;
+  severity?:        DisabilitySeverity;
+  autismLevel?:     number;
+  disabilityType?:  LookupValue;
+}
+
+export interface StudentAssistiveDevice {
+  id:               number;
+  studentId:        number;
+  assistiveDeviceId: number;
+  assistiveDevice?: LookupValue;
+}
+
+export interface StudentClassAssignment {
+  id:             number;
+  studentId:      number;
+  classRoomId:    number;
+  gradeId:        number;
+  academicYearId: number;
+  enrolledAt:     string;
+  revokedAt?:     string;
+  classRoom?:     { id: number; name: string; teacherAssignments?: any[] };
+  grade?:         { id: number; label: string };
+  academicYear?:  { id: number; label: string };
+}
+
+export interface Student {
+  id:           number;
+  nationalCode: string;
+  firstName:    string;
+  lastName:     string;
+  gender:       Gender;
+  birthDay?:    number;
+  birthMonth?:  number;
+  birthYearShamsi?: number;
+  address?:     string;
+  homePhone?:   string;
+
+  guardianName?:              string;
+  guardianNationalCode?:      string;
+  guardianPhone?:             string;
+  guardianPhysicalStatusId?:  number;
+  guardianPhysicalStatus?:    LookupValue;
+
+  secondGuardianName?:              string;
+  secondGuardianNationalCode?:      string;
+  secondGuardianPhone?:             string;
+  secondGuardianPhysicalStatusId?:  number;
+  secondGuardianPhysicalStatus?:    LookupValue;
+
+  educationLevelId?: number;
+  educationLevel?:   LookupValue;
+  gradeId?:          number;
+  grade?:            any;
+  fieldOfStudyId?:   number;
+  fieldOfStudy?:     LookupValue;
+  centerId?:         number;
+  center?:           { id: number; name: string; city: string };
+  districtId?:       number;
+  district?:         LookupValue;
+  attendanceType?:   'SCHOOL_PRESENCE' | 'SPECIAL_COMMISSION_18';
+  entryDay?:         number;
+  entryMonth?:       number;
+  entryYear?:        number;
+
+  physicalStatusId?:  number;
+  physicalStatus?:    LookupValue;
+  bookTypeId?:        number;
+  bookType?:          LookupValue;
+  speechDisorderId?:  number;
+  speechDisorder?:    LookupValue;
+  needsOccupationalTherapy?: boolean;
+  needsSpeechTherapy?:       boolean;
+  needsPhysiotherapy?:       boolean;
+
+  bankAccountNumber?: string;
+  shabaNumber?:       string;
+
+  isMartyrFamily?:       boolean;
+  isOrphan?:             boolean;
+  isUnderWelfare?:       boolean;
+  isUnderRelief?:        boolean;
+  hasNonParentGuardian?: boolean;
+
+  willingCultural?: boolean;
+  willingArt?:      boolean;
+  willingSports?:   boolean;
+  willingQuran?:    boolean;
+  achievementsText?: string;
+  notes?:           string;
+
+  age?:                  number;
+  isMultipleDisability?: boolean;
+  disabilities?:         StudentDisability[];
+  assistiveDevices?:     StudentAssistiveDevice[];
+  classAssignments?:     StudentClassAssignment[];
+  studentStatusHistory?: any[];
+
+  isActive:  boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface UserCenterAssignment {
   id:             number;
   userId:         number;
@@ -188,22 +294,7 @@ export interface UserCenterAssignment {
   academicYear?:  { id: number; label: string; };
 }
  
-// ─── Student ────────────────────────────────────────────────
-export interface Student {
-  id:           number;
-  nationalCode: string;
-  firstName:    string;
-  lastName:     string;
-  gender:       Gender;
-  birthDate?:   string;
-  parentName?:  string;
-  parentPhone?: string;
-  address?:     string;
-  isActive:     boolean;
-  createdAt:    string;
-  enrollments?:           StudentEnrollment[];
-  studentStatusHistory?:  StudentStatusHistory[];
-}
+// ─── Student (قدیمی — جایگزین شده با نسخه‌ی کامل بالاتر) ────
  
 export interface StudentEnrollment {
   id:             number;

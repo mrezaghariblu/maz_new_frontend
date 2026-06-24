@@ -99,17 +99,69 @@ export class LookupsApi extends ApiService {
 export class StudentsApi extends ApiService {
   private url = `${this.base}/students`;
 
-  list(dto: SmartFilterRequest)       { return this.http.post<PagedResult<Student>>(`${this.url}/list`, dto); }
-  getOne(id: number)                  { return this.http.get<Student>(`${this.url}/${id}`); }
-  create(d: Partial<Student>)         { return this.http.post<Student>(this.url, d); }
-  update(id: number, d: Partial<Student>) { return this.http.patch<Student>(`${this.url}/${id}`, d); }
-  enroll(id: number, d: { centerId: number; academicYearId: number; grade: string; field?: string }) {
-    return this.http.post(`${this.url}/${id}/enroll`, d);
+  list(dto: SmartFilterRequest)        { return this.http.post<PagedResult<Student>>(`${this.url}/list`, dto); }
+  getOne(id: number)                   { return this.http.get<Student>(`${this.url}/${id}`); }
+  create(d: any)                       { return this.http.post<Student>(this.url, d); }
+  update(id: number, d: any)           { return this.http.patch<Student>(`${this.url}/${id}`, d); }
+  deactivate(id: number)               { return this.http.delete(`${this.url}/${id}`); }
+  setDisabilities(id: number, items: any[]) { return this.http.put(`${this.url}/${id}/disabilities`, { items }); }
+  setAssistiveDevices(id: number, ids: number[]) { return this.http.put(`${this.url}/${id}/assistive-devices`, { ids }); }
+  assignToClass(id: number, d: { classRoomId: number; gradeId: number; academicYearId: number }) {
+    return this.http.post(`${this.url}/${id}/class-assignment`, d);
   }
-  deactivate(id: number) { return this.http.delete(`${this.url}/${id}`); }
-
+  revokeClassAssignment(assignmentId: number) {
+    return this.http.patch(`${this.url}/class-assignments/${assignmentId}/revoke`, {});
+  }
+  recordPromotion(id: number, d: { academicYearId: number; decision: string; nextGradeId?: number; note?: string }) {
+    return this.http.post(`${this.url}/${id}/promotion`, d);
+  }
   exportExcel(dto: ExcelExportRequest): Observable<Blob> {
     return this.http.post(`${this.url}/export/excel`, dto, { responseType: 'blob' });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+
+@Injectable({ providedIn: 'root' })
+export class GradesApi extends ApiService {
+  private url = `${this.base}/grades`;
+  findAll(educationLevelId?: number) {
+    const params: Record<string, string> = {};
+    if (educationLevelId) params['educationLevelId'] = String(educationLevelId);
+    return this.http.get<any[]>(this.url, { params });
+  }
+  getOne(id: number) { return this.http.get<any>(`${this.url}/${id}`); }
+  create(d: any)     { return this.http.post<any>(this.url, d); }
+  update(id: number, d: any) { return this.http.patch<any>(`${this.url}/${id}`, d); }
+  deactivate(id: number) { return this.http.delete(`${this.url}/${id}`); }
+}
+
+// ─────────────────────────────────────────────────────────────
+
+@Injectable({ providedIn: 'root' })
+export class ImportApi extends ApiService {
+  private url = `${this.base}/import`;
+
+  studentTemplate(): Observable<Blob> {
+    return this.http.get(`${this.url}/template/students`, { responseType: 'blob' });
+  }
+  personnelTemplate(): Observable<Blob> {
+    return this.http.get(`${this.url}/template/personnel`, { responseType: 'blob' });
+  }
+  previewStudents(file: File): Observable<any> {
+    const fd = new FormData(); fd.append('file', file);
+    return this.http.post(`${this.url}/preview/students`, fd);
+  }
+  previewPersonnel(file: File): Observable<any> {
+    const fd = new FormData(); fd.append('file', file);
+    return this.http.post(`${this.url}/preview/personnel`, fd);
+  }
+  importStudents(file: File, centerId?: number, academicYearId?: number): Observable<any> {
+    const fd = new FormData(); fd.append('file', file);
+    let params: Record<string, string> = {};
+    if (centerId) params['centerId'] = String(centerId);
+    if (academicYearId) params['academicYearId'] = String(academicYearId);
+    return this.http.post(`${this.url}/students`, fd, { params });
   }
 }
 

@@ -157,22 +157,26 @@ const BOOL_OPS = [
 
       <!-- افزودن فیلتر جدید -->
       <div class="sf-row">
-        <select class="sf-field-sel" [(ngModel)]="newField" (change)="onFieldChange()">
+        <select class="sf-field-sel"
+          [value]="newField()"
+          (change)="onFieldChange($any($event.target).value)">
           <option value="">انتخاب فیلد...</option>
           @for (f of fields; track f.key) {
             <option [value]="f.key">{{ f.label }}</option>
           }
         </select>
 
-        @if (newField) {
-          <select class="sf-op-sel" [(ngModel)]="newOp">
+        @if (newField()) {
+          <select class="sf-op-sel"
+            [value]="newOp()"
+            (change)="onOpChange($any($event.target).value)">
             @for (op of currentOps(); track op.value) {
               <option [value]="op.value">{{ op.label }}</option>
             }
           </select>
 
           @if (needsValue()) {
-            @if (currentFieldType() === 'boolean' || isNoValueOp(newOp)) {
+            @if (currentFieldType() === 'boolean' || isNoValueOp(newOp())) {
               <!-- بدون input -->
             } @else if (currentFieldType() === 'enum') {
               <select class="sf-val-input" [(ngModel)]="newValue">
@@ -187,7 +191,7 @@ const BOOL_OPS = [
                 placeholder="مقدار"
                 [(ngModel)]="newValue"
               />
-              @if (newOp === 'between' || newOp === 'not_between') {
+              @if (newOp() === 'between' || newOp() === 'not_between') {
                 <span style="font-size:12px;color:var(--maz-gray-400)">تا</span>
                 <input class="sf-val-to" [type]="currentFieldType() === 'number' ? 'number' : 'date'" placeholder="مقدار دوم" [(ngModel)]="newValueTo" />
               }
@@ -216,13 +220,14 @@ export class SmartFilterComponent implements OnInit {
   private _filters = signal<ActiveFilter[]>([]);
   readonly activeFilters = this._filters.asReadonly();
 
-  newField   = '';
-  newOp      = '';
-  newValue:  any = '';
-  newValueTo:any = '';
-  private _nextId    = 1;
+  // ─── تبدیل به signal تا computed‌ها واکنش نشان بدن ────────────
+  readonly newField = signal('');
+  readonly newOp    = signal('');
+  newValue:   any = '';
+  newValueTo: any = '';
+  private _nextId = 1;
 
-  readonly currentFieldDef = computed(() => this.fields.find(f => f.key === this.newField));
+  readonly currentFieldDef  = computed(() => this.fields.find(f => f.key === this.newField()));
   readonly currentFieldType = computed((): FilterFieldType => this.currentFieldDef()?.type ?? 'string');
   readonly currentEnumOpts  = computed(() => this.currentFieldDef()?.enumOptions ?? []);
 
@@ -236,32 +241,36 @@ export class SmartFilterComponent implements OnInit {
     }
   });
 
-  readonly needsValue = computed(() => !this.isNoValueOp(this.newOp));
+  readonly needsValue = computed(() => !this.isNoValueOp(this.newOp()));
 
-  ngOnInit() {
-    if (this.fields.length) this.newField = '';
-  }
+  ngOnInit() { this.newField.set(''); }
 
-  onFieldChange() {
+  onFieldChange(val: string) {
+    this.newField.set(val);
+    // بلافاصله بعد از set، currentOps() به‌روزه چون signal هست
     const ops = this.currentOps();
-    this.newOp      = ops[0]?.value ?? '';
+    this.newOp.set(ops[0]?.value ?? '');
     this.newValue   = '';
     this.newValueTo = '';
   }
 
+  onOpChange(val: string) { this.newOp.set(val); }
+
   addFilter() {
-    if (!this.newField || !this.newOp) return;
+    const field = this.newField();
+    const op    = this.newOp();
+    if (!field || !op) return;
     const fieldDef = this.currentFieldDef();
     if (!fieldDef) return;
 
     const filter: ActiveFilter = {
       _id:        this._nextId++,
-      field:      this.newField,
+      field,
       fieldLabel: fieldDef.label,
       fieldType:  fieldDef.type,
-      operator:   this.newOp,
-      value:      this.isNoValueOp(this.newOp) ? null : this.newValue,
-      valueTo:    (this.newOp === 'between' || this.newOp === 'not_between') ? this.newValueTo : undefined,
+      operator:   op,
+      value:      this.isNoValueOp(op) ? null : this.newValue,
+      valueTo:    (op === 'between' || op === 'not_between') ? this.newValueTo : undefined,
       order:      this._filters().length + 1,
     };
 
