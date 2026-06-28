@@ -230,6 +230,8 @@ export class ClassesComponent implements OnInit {
     const body: any = { name: this.newClassName };
     if (centerId) body.centerId = centerId;
     if (this.newClassCapacity) body.capacity = this.newClassCapacity;
+    const yearId = this.appState.activeYearId();
+    if (yearId) body.academicYearId = yearId;
 
     this.http.post<any>(`${this.base}/classes`, body).subscribe({
       next: () => { this.newClassName = ''; this.newClassCapacity = null; this.showNewForm.set(false); this.loadClasses(); },

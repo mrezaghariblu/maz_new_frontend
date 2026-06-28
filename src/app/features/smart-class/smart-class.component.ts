@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { SmartClassApi } from '../../core/services/api.service';
+import { SmartClassApi, CentersApi } from '../../core/services/api.service';
 import { AppStateService } from '../../core/services/app-state.service';
 import { AuthService } from '../../core/auth/auth.service';
 import { catchError, of } from 'rxjs';
@@ -150,7 +150,9 @@ interface ProposedClass {
             <label class="maz-label">مرکز آموزشی</label>
             <select class="maz-select" [(ngModel)]="selectedCenterId">
               <option [ngValue]="null">انتخاب کنید...</option>
-              <!-- TODO: load from centers API -->
+              @for (c of centers(); track c.id) {
+                <option [ngValue]="c.id">{{ c.name }}</option>
+              }
             </select>
           </div>
         }
@@ -316,11 +318,13 @@ interface ProposedClass {
   `,
 })
 export class SmartClassComponent implements OnInit {
-  private api       = inject(SmartClassApi);
+  private api        = inject(SmartClassApi);
+  private centersApi = inject(CentersApi);
   readonly appState = inject(AppStateService);
   readonly auth     = inject(AuthService);
 
   step          = signal<Step>('idle');
+  centers       = signal<any[]>([]);
   proposal      = signal<any | null>(null);
   editableClasses = signal<any[]>([]);
   confirmResult = signal<any | null>(null);
@@ -338,10 +342,16 @@ export class SmartClassComponent implements OnInit {
   ngOnInit() {
     this.selectedYearId   = this.appState.activeYearId() ?? null;
     this.selectedCenterId = this.auth.centerIds()[0] ?? null;
+    if (this.auth.isSuperuser()) {
+      this.centersApi.list({ page: 1, pageSize: 200 }).subscribe({
+        next: r => this.centers.set((r as any).data ?? []),
+        error: () => {},
+      });
+    }
   }
 
   canGenerate() {
-    return this.selectedYearId && (this.selectedCenterId || !this.auth.isSuperuser());
+    return this.selectedYearId && this.selectedCenterId;
   }
 
   generate() {
