@@ -7,12 +7,13 @@ import { UsersApi, LookupsApi, CentersApi } from '../../../core/services/api.ser
 import { AppStateService } from '../../../core/services/app-state.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { FormFieldComponent } from '../../../shared/components/form-field/form-field.component';
+import { ShamsiDateInputComponent, ShamsiDate } from '../../../shared/components/shamsi-date-input/shamsi-date-input.component';
 import { UserType, Gender, User, LookupGroups, Center, DisabilitySeverity } from '../../../core/models';
 
 @Component({
   selector: 'maz-user-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, FormFieldComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, FormFieldComponent, ShamsiDateInputComponent],
   styles: [`
     .form-card { max-width: 860px; }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
@@ -98,17 +99,11 @@ import { UserType, Gender, User, LookupGroups, Center, DisabilitySeverity } from
               <input class="maz-input" type="email" formControlName="email" />
             </maz-form-field>
           </div>
-          <div class="form-grid--3">
-            <maz-form-field label="روز تولد (شمسی)" [control]="f['birthDay']">
-              <input class="maz-input" type="number" min="1" max="31" formControlName="birthDay" />
-            </maz-form-field>
-            <maz-form-field label="ماه تولد (شمسی)" [control]="f['birthMonth']">
-              <input class="maz-input" type="number" min="1" max="12" formControlName="birthMonth" />
-            </maz-form-field>
-            <maz-form-field label="سال تولد (شمسی)" [control]="f['birthYearShamsi']">
-              <input class="maz-input" type="number" formControlName="birthYearShamsi" />
-            </maz-form-field>
-          </div>
+          <div class="section-title" style="font-size:12px;margin-bottom:8px">تاریخ تولد (شمسی)</div>
+          <maz-shamsi-date-input
+            [initialValue]="birthDate()"
+            (dateChange)="onBirthDateChange($event)">
+          </maz-shamsi-date-input>
         </div>
 
         <!-- ───────── اشتغال ───────── -->
@@ -337,6 +332,7 @@ export class UserFormComponent implements OnInit {
   readonly auth     = inject(AuthService);
 
   isEdit = signal(false);
+  birthDate = signal<ShamsiDate>({ year: null, month: null, day: null });
   userId = 0;
   saving = signal(false);
   lookups = signal<LookupGroups>({});
@@ -408,6 +404,13 @@ export class UserFormComponent implements OnInit {
     return row?.code === 'AUTISM';
   }
 
+  onBirthDateChange(d: ShamsiDate) {
+    this.birthDate.set(d);
+    this.f['birthDay'].setValue(d.day);
+    this.f['birthMonth'].setValue(d.month);
+    this.f['birthYearShamsi'].setValue(d.year);
+  }
+
   canLoginForSelectedType(): boolean {
     const t = this.f['userType'].value;
     return t === 'SUPERUSER' || t === 'CENTER_MANAGER';
@@ -454,6 +457,7 @@ export class UserFormComponent implements OnInit {
       this.api.getOne(this.userId).subscribe({
         next: u => {
           this.form.patchValue({ ...u } as any);
+          this.birthDate.set({ year: (u as any).birthYearShamsi ?? null, month: (u as any).birthMonth ?? null, day: (u as any).birthDay ?? null });
           (u.disabilities ?? []).forEach(d => this.addDisability({
             disabilityTypeId: d.disabilityTypeId,
             severity: d.severity ?? null,

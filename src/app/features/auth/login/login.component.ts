@@ -134,7 +134,7 @@ import { AuthService } from '../../../core/auth/auth.service';
   template: `
     <div class="login-page">
       <div class="login-card">
-        <div class="login-gem">💎</div>
+        <div class="login-gem"><img src="/logo.png" alt="لوگو MAZ" style="width:64px;height:64px;object-fit:contain" onerror="this.style.display='none'" /></div>
         <div class="login-title">ماز</div>
         <div class="login-sub">مدیریت استثنایی استان زنجان</div>
 

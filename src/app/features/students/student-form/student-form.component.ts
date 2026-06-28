@@ -65,7 +65,7 @@ import { LookupGroups, Center } from '../../../core/models';
             <maz-form-field label="تلفن منزل" [control]="f['homePhone']"><input class="maz-input" formControlName="homePhone" /></maz-form-field>
           </div>
           <maz-form-field label="تاریخ تولد (شمسی)">
-            <maz-shamsi-date [value]="birthDate()" (valueChange)="birthDate.set($event)" [yearFrom]="1350" [yearTo]="1415" />
+            <maz-shamsi-date-input [initialValue]="birthDate()" (dateChange)="onBirthDateChange($event)"></maz-shamsi-date-input>
           </maz-form-field>
         </div>
 
@@ -149,7 +149,7 @@ import { LookupGroups, Center } from '../../../core/models';
             </maz-form-field>
           </div>
           <maz-form-field label="تاریخ ورود به مدرسه استثنایی (شمسی)">
-            <maz-shamsi-date [value]="entryDate()" (valueChange)="entryDate.set($event)" [yearFrom]="1360" [yearTo]="1415" />
+            <maz-shamsi-date-input [initialValue]="entryDate()" (dateChange)="onEntryDateChange($event)"></maz-shamsi-date-input>
           </maz-form-field>
         </div>
 
@@ -267,7 +267,7 @@ import { LookupGroups, Center } from '../../../core/models';
           <a class="maz-btn maz-btn--ghost" routerLink="/students">انصراف</a>
           <button type="submit" class="maz-btn maz-btn--primary" [disabled]="saving()">
             @if (saving()) { <span class="maz-spinner" style="width:14px;height:14px;border-width:2px"></span> }
-            {{ isEdit() ? 'ذخیره تغییرات' : 'ثبت دانش آموز' }}
+            {{ isEdit() ? 'ذخیره تغییرات' : 'ثبت دانش‌آموز' }}
           </button>
         </div>
       </form>
@@ -350,6 +350,14 @@ export class StudentFormComponent implements OnInit {
   toggleDevice(id: number) {
     this.selectedDeviceIds.update(ids => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
   }
+
+  onBirthDateChange(date: ShamsiDate) {
+  this.birthDate.set(date);
+}
+
+onEntryDateChange(date: ShamsiDate) {
+  this.entryDate.set(date);
+}
 
   addDisability(item?: any) {
     this.disabilities.push(this.fb.group({

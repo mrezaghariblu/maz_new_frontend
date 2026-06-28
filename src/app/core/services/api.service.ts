@@ -41,7 +41,8 @@ export class CentersApi extends ApiService {
   getOne(id: number)               { return this.http.get<Center>(`${this.url}/${id}`); }
   create(d: Partial<Center>)       { return this.http.post<Center>(this.url, d); }
   update(id: number, d: Partial<Center>) { return this.http.patch<Center>(`${this.url}/${id}`, d); }
-  deactivate(id: number)           { return this.http.delete<Center>(`${this.url}/${id}`); }
+  setCanLogin(id: number, d: { canLogin: boolean; password?: string }) { return this.http.patch(`${this.url}/${id}/can-login`, d); }
+  deactivate(id: number)               { return this.http.delete<Center>(`${this.url}/${id}`); }
 
   exportExcel(dto: ExcelExportRequest): Observable<Blob> {
     return this.http.post(`${this.url}/export/excel`, dto, { responseType: 'blob' });
@@ -73,7 +74,8 @@ export class UsersApi extends ApiService {
   revokeAssignment(assignmentId: number) {
     return this.http.patch(`${this.url}/assignments/${assignmentId}/revoke`, {});
   }
-  deactivate(id: number) { return this.http.delete(`${this.url}/${id}`); }
+  setCanLogin(id: number, d: { canLogin: boolean; password?: string }) { return this.http.patch(`${this.url}/${id}/can-login`, d); }
+  deactivate(id: number)               { return this.http.delete(`${this.url}/${id}`); }
 
   exportExcel(dto: ExcelExportRequest): Observable<Blob> {
     return this.http.post(`${this.url}/export/excel`, dto, { responseType: 'blob' });
@@ -103,9 +105,22 @@ export class StudentsApi extends ApiService {
   getOne(id: number)                   { return this.http.get<Student>(`${this.url}/${id}`); }
   create(d: any)                       { return this.http.post<Student>(this.url, d); }
   update(id: number, d: any)           { return this.http.patch<Student>(`${this.url}/${id}`, d); }
+  setCanLogin(id: number, d: { canLogin: boolean; password?: string }) { return this.http.patch(`${this.url}/${id}/can-login`, d); }
   deactivate(id: number)               { return this.http.delete(`${this.url}/${id}`); }
   setDisabilities(id: number, items: any[]) { return this.http.put(`${this.url}/${id}/disabilities`, { items }); }
   setAssistiveDevices(id: number, ids: number[]) { return this.http.put(`${this.url}/${id}/assistive-devices`, { ids }); }
+  getUnassignedCount(centerId: number, academicYearId: number) {
+    return this.http.get<{ count: number }>(`${this.url}/unassigned-count`, { params: { centerId: String(centerId), academicYearId: String(academicYearId) } });
+  }
+  getUnassignedList(centerId: number, academicYearId: number) {
+    return this.http.post<PagedResult<Student>>(`${this.url}/list`, {
+      page: 1, pageSize: 200,
+      filters: [
+        { field: 'centerId', fieldType: 'number', operator: 'eq', value: centerId, order: 1 },
+        { field: 'isActive', fieldType: 'boolean', operator: 'is_true', order: 2 },
+      ],
+    });
+  }
   assignToClass(id: number, d: { classRoomId: number; gradeId: number; academicYearId: number }) {
     return this.http.post(`${this.url}/${id}/class-assignment`, d);
   }
@@ -133,7 +148,8 @@ export class GradesApi extends ApiService {
   getOne(id: number) { return this.http.get<any>(`${this.url}/${id}`); }
   create(d: any)     { return this.http.post<any>(this.url, d); }
   update(id: number, d: any) { return this.http.patch<any>(`${this.url}/${id}`, d); }
-  deactivate(id: number) { return this.http.delete(`${this.url}/${id}`); }
+  setCanLogin(id: number, d: { canLogin: boolean; password?: string }) { return this.http.patch(`${this.url}/${id}/can-login`, d); }
+  deactivate(id: number)               { return this.http.delete(`${this.url}/${id}`); }
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -208,4 +224,37 @@ export class AuditApi extends ApiService {
 
   list(dto: SmartFilterRequest)    { return this.http.post<PagedResult<AuditLog>>(`${this.url}/list`, dto); }
   summary(academicYearId: number)  { return this.http.get<unknown>(`${this.url}/summary/${academicYearId}`); }
+}
+// ─────────────────────────────────────────────────────────────
+
+@Injectable({ providedIn: 'root' })
+export class AnalyticsApi extends ApiService {
+  private url = `${this.base}/analytics`;
+
+  query(dto: { entity: string; dimensions: string[]; academicYearId?: number; centerId?: number; filters?: any[] }) {
+    return this.http.post<any>(`${this.url}/query`, dto);
+  }
+  superuserSummary(academicYearId?: number) {
+    const params: any = {};
+    if (academicYearId) params.academicYearId = String(academicYearId);
+    return this.http.get<any>(`${this.url}/summary/superuser`, { params });
+  }
+  centerSummary(centerId: number, academicYearId?: number) {
+    const params: any = { centerId: String(centerId) };
+    if (academicYearId) params.academicYearId = String(academicYearId);
+    return this.http.get<any>(`${this.url}/summary/center`, { params });
+  }
+}
+
+@Injectable({ providedIn: 'root' })
+export class SmartClassApi extends ApiService {
+  private url = `${this.base}/smart-class`;
+
+  generate(centerId: number, academicYearId: number) {
+    return this.http.post<any>(`${this.url}/generate`, { centerId, academicYearId });
+  }
+
+  confirm(centerId: number, academicYearId: number, classes: { name: string; gradeIds: number[]; studentIds: number[] }[]) {
+    return this.http.post<any>(`${this.url}/confirm`, { centerId, academicYearId, classes });
+  }
 }

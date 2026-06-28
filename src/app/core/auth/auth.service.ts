@@ -2,7 +2,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { tap, catchError, throwError } from 'rxjs';
+import { Observable, tap, catchError, throwError } from 'rxjs';
 import { environment } from '@environments/environment';
 import { AuthResponse, JwtClaims, LoginRequest, UserType } from '../models/index';
 
@@ -13,7 +13,6 @@ const REFRESH_KEY = 'maz_refresh';
 export class AuthService {
   private readonly api = environment.apiUrl;
 
-  // ─── Signals ───────────────────────────────────────────────
   private _claims = signal<JwtClaims | null>(this.decodeStored());
 
   readonly isLoggedIn  = computed(() => !!this._claims());
@@ -24,7 +23,6 @@ export class AuthService {
 
   constructor(private http: HttpClient, private router: Router) {}
 
-  // ─── Login ─────────────────────────────────────────────────
   login(dto: LoginRequest) {
     return this.http.post<AuthResponse>(`${this.api}/auth/login`, dto).pipe(
       tap(res => this.storeTokens(res)),
@@ -32,24 +30,29 @@ export class AuthService {
     );
   }
 
-  // ─── Logout ────────────────────────────────────────────────
   logout() {
-    this.http.post(`${this.api}/auth/logout`, {}).subscribe();
+    const rt = localStorage.getItem(REFRESH_KEY);
+    if (rt) this.http.post(`${this.api}/auth/logout`, { refreshToken: rt }).subscribe();
     this.clearTokens();
     this.router.navigate(['/login']);
   }
 
-  // ─── Refresh ───────────────────────────────────────────────
-  refresh() {
+  // متد مورد استفاده interceptor
+  refreshTokens(): Observable<AuthResponse> {
     const refreshToken = localStorage.getItem(REFRESH_KEY);
-    if (!refreshToken) return throwError(() => new Error('no refresh token'));
-
+    if (!refreshToken) {
+      this.clearTokens();
+      return throwError(() => new Error('no refresh token'));
+    }
     return this.http.post<AuthResponse>(`${this.api}/auth/refresh`, { refreshToken }).pipe(
       tap(res => this.storeTokens(res)),
+      catchError(err => {
+        this.clearTokens();
+        return throwError(() => err);
+      }),
     );
   }
 
-  // ─── Token management ──────────────────────────────────────
   getAccessToken(): string | null {
     return localStorage.getItem(ACCESS_KEY);
   }
@@ -57,7 +60,7 @@ export class AuthService {
   isTokenExpired(): boolean {
     const claims = this._claims();
     if (!claims) return true;
-    return Date.now() / 1000 > claims.exp - 30; // 30s buffer
+    return Date.now() / 1000 > (claims.exp ?? 0) - 30;
   }
 
   private storeTokens(res: AuthResponse) {
@@ -66,7 +69,7 @@ export class AuthService {
     this._claims.set(this.decodeToken(res.accessToken));
   }
 
-  private clearTokens() {
+  clearTokens() {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
     this._claims.set(null);
@@ -84,7 +87,6 @@ export class AuthService {
     } catch { return null; }
   }
 
-  // ─── Permission helpers ────────────────────────────────────
   canAccessCenter(centerId: number): boolean {
     if (this.isSuperuser()) return true;
     return this.centerIds().includes(centerId);

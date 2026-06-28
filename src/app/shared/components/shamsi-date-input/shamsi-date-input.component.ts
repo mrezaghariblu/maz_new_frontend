@@ -1,73 +1,115 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+// src/app/shared/components/shamsi-date-input/shamsi-date-input.component.ts
+import {
+  Component, Input, Output, EventEmitter, OnChanges, SimpleChanges, signal, computed,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SHAMSI_MONTHS, SHAMSI_DAYS, SHAMSI_YEARS_RANGE } from '../../utils/shamsi.util';
+import { SHAMSI_MONTHS, shamsiYearRange, shamsiDaysInMonth, todayShamsi } from '../../utils/shamsi.util';
 
 export interface ShamsiDate {
-  year:  number | null;
+  year: number | null;
   month: number | null;
-  day:   number | null;
+  day: number | null;
 }
 
 @Component({
-  selector: 'maz-shamsi-date',
+  selector: 'maz-shamsi-date-input',
   standalone: true,
   imports: [CommonModule, FormsModule],
   styles: [`
-    .shamsi-wrap { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .shamsi-label { font-size: 11px; color: var(--maz-gray-500); margin-bottom: 2px; }
-    select { padding: 7px 8px; border: 1.5px solid var(--maz-border); border-radius: var(--maz-radius-sm);
-      font-family: var(--maz-font); font-size: 13px; color: var(--maz-gray-700); outline: none; background:#fff;
-      &:focus { border-color: var(--maz-firouzeh-400); } }
-    .yr  { width: 90px; }
-    .mon { width: 100px; }
-    .dy  { width: 64px; }
+    .shamsi-row {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1.5fr;
+      gap: 8px;
+    }
+    .maz-select { width: 100%; }
+    label.field-sublabel {
+      display: block;
+      font-size: 11px;
+      color: var(--maz-gray-500);
+      margin-bottom: 4px;
+    }
   `],
   template: `
-    <div class="shamsi-wrap">
+    <div class="shamsi-row">
       <div>
-        <div class="shamsi-label">سال</div>
-        <select class="yr" [ngModel]="value.year" (ngModelChange)="emit('year', $event)">
-          <option [value]="null">سال</option>
-          @for (y of years; track y) { <option [value]="y">{{ y }}</option> }
+        <label class="field-sublabel">سال</label>
+        <select class="maz-select" [ngModel]="value().year" (ngModelChange)="onYearChange($event)">
+          <option [value]="null">—</option>
+          @for (y of years; track y) {
+            <option [value]="y">{{ y }}</option>
+          }
         </select>
       </div>
       <div>
-        <div class="shamsi-label">ماه</div>
-        <select class="mon" [ngModel]="value.month" (ngModelChange)="emit('month', $event)">
-          <option [value]="null">ماه</option>
-          @for (m of months; track m.value) { <option [value]="m.value">{{ m.label }}</option> }
+        <label class="field-sublabel">ماه</label>
+        <select class="maz-select" [ngModel]="value().month" (ngModelChange)="onMonthChange($event)">
+          <option [value]="null">—</option>
+          @for (m of months; track m.value) {
+            <option [value]="m.value">{{ m.label }}</option>
+          }
         </select>
       </div>
-      @if (showDay) {
-        <div>
-          <div class="shamsi-label">روز</div>
-          <select class="dy" [ngModel]="value.day" (ngModelChange)="emit('day', $event)">
-            <option [value]="null">روز</option>
-            @for (d of days; track d) { <option [value]="d">{{ d }}</option> }
-          </select>
-        </div>
-      }
+      <div>
+        <label class="field-sublabel">روز</label>
+        <select class="maz-select" [ngModel]="value().day" (ngModelChange)="onDayChange($event)">
+          <option [value]="null">—</option>
+          @for (d of days(); track d) {
+            <option [value]="d">{{ d }}</option>
+          }
+        </select>
+      </div>
     </div>
   `,
 })
-export class ShamsiDateInputComponent implements OnInit {
-  @Input() value: ShamsiDate = { year: null, month: null, day: null };
-  @Input() showDay = true;
-  @Input() yearFrom = 1320;
-  @Input() yearTo   = 1415;
-  @Output() valueChange = new EventEmitter<ShamsiDate>();
+export class ShamsiDateInputComponent implements OnChanges {
+  @Input() initialValue?: ShamsiDate | null;
+  @Output() dateChange = new EventEmitter<ShamsiDate>();
 
-  months = SHAMSI_MONTHS;
-  days   = SHAMSI_DAYS;
-  years: number[] = [];
+  readonly months = SHAMSI_MONTHS;
+  readonly years  = (() => {
+    const [cy] = todayShamsi();
+    return shamsiYearRange(cy - 100, cy + 5);
+  })();
 
-  ngOnInit() {
-    this.years = SHAMSI_YEARS_RANGE(this.yearFrom, this.yearTo);
+  value = signal<ShamsiDate>({ year: null, month: null, day: null });
+
+  days = computed(() => {
+    const { year, month } = this.value();
+    if (!year || !month) return Array.from({ length: 31 }, (_, i) => i + 1);
+    const count = shamsiDaysInMonth(year, month);
+    return Array.from({ length: count }, (_, i) => i + 1);
+  });
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['initialValue'] && this.initialValue) {
+      this.value.set({
+        year:  this.initialValue.year  ?? null,
+        month: this.initialValue.month ?? null,
+        day:   this.initialValue.day   ?? null,
+      });
+    }
   }
 
-  emit(field: 'year' | 'month' | 'day', val: any) {
-    const updated = { ...this.value, [field]: val ? +val : null };
-    this.valueChange.emit(updated);
+  onYearChange(y: number | null) {
+    this.value.update(v => ({ ...v, year: y ? Number(y) : null }));
+    this.emit();
+  }
+  onMonthChange(m: number | null) {
+    const newMonth = m ? Number(m) : null;
+    const maxDay = newMonth && this.value().year
+      ? shamsiDaysInMonth(this.value().year!, newMonth)
+      : 31;
+    const day = this.value().day && this.value().day! > maxDay ? null : this.value().day;
+    this.value.update(v => ({ ...v, month: newMonth, day }));
+    this.emit();
+  }
+  onDayChange(d: number | null) {
+    this.value.update(v => ({ ...v, day: d ? Number(d) : null }));
+    this.emit();
+  }
+
+  private emit() {
+    this.dateChange.emit(this.value());
   }
 }

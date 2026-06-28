@@ -167,7 +167,7 @@ interface NavItem {
 
         <div class="sidebar__brand">
           <div class="brand-logo">
-            <span class="brand-gem">💎</span>
+            <span class="brand-gem"><img src="/logo.png" alt="MAZ" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display='none'" /></span>
             <div class="brand-text" *ngIf="sidebarOpen()">
               <div class="brand-name">ماز</div>
               <div class="brand-sub">مدیریت استثنایی استان زنجان</div>
@@ -236,7 +236,10 @@ export class ShellComponent implements OnInit {
     { path: 'dashboard',       icon: '📊', label: 'داشبورد' },
     { path: 'users',           icon: '👤', label: 'پرسنل' },
     { path: 'students',        icon: '🎓', label: 'دانش‌آموزان' },
-    { path: 'centers',         icon: '🏫', label: 'مراکز' },
+    { path: 'classes',         icon: '📚', label: 'کلاسبندی' },
+    { path: 'smart-class',     icon: '🤖', label: 'کلاسبندی هوشمند' },
+    { path: 'centers',         icon: '🏫', label: 'مراکز', superuserOnly: true },
+    { path: 'analytics',       icon: '📊', label: 'گزارش آماری', superuserOnly: true },
     { path: 'status',          icon: '🔄', label: 'وضعیت پرسنلی' },
     { path: 'academic-years',  icon: '📅', label: 'سال تحصیلی', superuserOnly: true },
     { path: 'audit',           icon: '📋', label: 'لاگ تغییرات',  superuserOnly: true },
