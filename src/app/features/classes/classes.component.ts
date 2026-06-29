@@ -1,265 +1,391 @@
 // src/app/features/classes/classes.component.ts
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { AppStateService } from '../../core/services/app-state.service';
 import { AuthService } from '../../core/auth/auth.service';
-import { HttpClient } from '@angular/common/http';
+import { LookupsApi } from '../../core/services/api.service';
 import { environment } from '@environments/environment';
 
 interface ClassRoom {
-  id: number; name: string; centerId: number;
+  id: number; name: string; centerId: number; academicYearId: number;
   classGrades: { grade: { id: number; label: string; track: string } }[];
-  teacherAssignments: { user: { firstName: string; lastName: string } }[];
+  teacherAssignments: { id: number; user: { id: number; firstName: string; lastName: string }; subject?: { label: string } }[];
+  studentAssignments?: { id: number; student: { id: number; firstName: string; lastName: string; gender: string }; grade: { label: string } }[];
   _studentCount?: number;
-  _unassignedCount?: number;
   _phantoms?: PhantomStudent[];
 }
-
-interface PhantomStudent {
-  id: string; name: string; gradeId: number | null; note: string;
-}
+interface PhantomStudent { id: string; name: string; gradeId: number | null; }
 
 @Component({
   selector: 'maz-classes',
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   styles: [`
-    .classes-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-    .class-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-    .class-card {
-      background: #fff; border-radius: var(--maz-radius-lg); border: 1px solid var(--maz-border);
-      padding: 18px; position: relative;
-    }
-    .class-card.unassigned { border-color: var(--maz-warning); }
-    .class-name { font-size: 15px; font-weight: 800; color: var(--maz-firouzeh-900); margin-bottom: 6px; }
-    .class-meta { font-size: 12px; color: var(--maz-gray-500); margin-bottom: 12px; }
-    .class-stats { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-    .stat-chip {
-      padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 700;
-      background: var(--maz-firouzeh-50); color: var(--maz-firouzeh-700);
-    }
-    .stat-chip.warn { background: #fef3c7; color: var(--maz-warning); }
-    .class-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .page-actions { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .class-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px,1fr)); gap:16px; }
+    .class-card { background:#fff; border-radius:var(--maz-radius-lg); border:1px solid var(--maz-border); overflow:hidden; }
+    .card-head { padding:13px 15px; display:flex; align-items:center; justify-content:space-between; background:var(--maz-firouzeh-50); gap:8px; }
+    .card-name { font-size:14px; font-weight:800; color:var(--maz-firouzeh-900); flex:1; }
+    .card-actions-row { display:flex; gap:6px; }
+    .card-meta { padding:10px 15px; display:flex; gap:6px; flex-wrap:wrap; }
+    .chip { padding:3px 9px; border-radius:10px; font-size:11px; font-weight:700; }
+    .chip-grade { background:var(--maz-firouzeh-50); color:var(--maz-firouzeh-700); }
+    .chip-count { background:#e0f2fe; color:#0369a1; }
+    .chip-teacher { background:#f0fdf4; color:#166534; }
+    .chip-warn { background:#fef3c7; color:#92400e; }
 
-    /* Phantom section */
-    .phantom-section { margin-top: 14px; border-top: 1px dashed var(--maz-border); padding-top: 12px; }
-    .phantom-title { font-size: 12px; font-weight: 700; color: var(--maz-gray-600); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-    .phantom-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-    .phantom-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--maz-gray-50); border-radius: 8px; font-size: 12px; }
-    .phantom-name { flex: 1; color: var(--maz-gray-700); font-style: italic; }
-    .phantom-remove { background: none; border: none; color: var(--maz-danger); cursor: pointer; font-size: 14px; padding: 2px; font-family: var(--maz-font); }
-    .add-phantom-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-    .add-phantom-row input, .add-phantom-row select { font-family: var(--maz-font); font-size: 12px; padding: 5px 8px; border: 1.5px solid var(--maz-border); border-radius: 6px; }
-    .add-phantom-row input { flex: 1; min-width: 80px; }
+    /* Student list panel inside card */
+    .students-panel { border-top:1px solid var(--maz-border); }
+    .students-panel-header { padding:8px 15px; font-size:11px; font-weight:800; color:var(--maz-gray-500); background:var(--maz-gray-50); display:flex; justify-content:space-between; }
+    .student-row { display:flex; align-items:center; gap:8px; padding:6px 15px; font-size:12px; border-bottom:1px solid var(--maz-border); }
+    .student-row:last-child { border-bottom:none; }
+    .s-name { flex:1; font-weight:600; }
+    .s-grade { font-size:10px; color:var(--maz-gray-400); }
+    .gender-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .gender-dot.male { background:#3b82f6; }
+    .gender-dot.female { background:#ec4899; }
 
-    .unassigned-hint { font-size: 11px; color: var(--maz-warning); font-weight: 600; display: flex; align-items: center; gap: 4px; }
-    .new-class-form { background:#fff; border-radius: var(--maz-radius-lg); border: 1px dashed var(--maz-firouzeh-300); padding: 18px; margin-bottom: 20px; }
-    .form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-    .form-row label { font-size: 12px; font-weight: 700; color: var(--maz-gray-600); display: block; margin-bottom: 4px; }
-    .form-row input, .form-row select { font-family: var(--maz-font); padding: 8px 10px; border: 1.5px solid var(--maz-border); border-radius: 8px; font-size: 13px; }
+    /* Teacher assign panel */
+    .teacher-panel { border-top:1px solid var(--maz-border); padding:10px 15px; }
+    .teacher-label { font-size:11px; font-weight:800; color:var(--maz-gray-500); margin-bottom:6px; }
+    .teacher-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .teacher-name { font-size:12px; font-weight:600; flex:1; }
+    .assign-row { display:flex; gap:6px; align-items:center; margin-top:6px; flex-wrap:wrap; }
+    .assign-row select, .assign-row input { font-family:var(--maz-font); font-size:12px; padding:5px 8px; border:1.5px solid var(--maz-border); border-radius:6px; }
+
+    /* Phantom */
+    .phantom-section { border-top:1px dashed var(--maz-border); padding:10px 15px; }
+    .phantom-title { font-size:11px; font-weight:700; color:var(--maz-gray-500); margin-bottom:6px; }
+    .phantom-row { display:flex; align-items:center; gap:6px; font-size:12px; padding:3px 0; }
+    .phantom-name { flex:1; font-style:italic; color:var(--maz-gray-600); }
+    .rm-btn { background:none; border:none; color:#dc2626; cursor:pointer; font-family:var(--maz-font); }
+    .add-phantom { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+    .add-phantom input, .add-phantom select { font-family:var(--maz-font); font-size:12px; padding:5px 8px; border:1.5px solid var(--maz-border); border-radius:6px; }
+    .add-phantom input { flex:1; min-width:80px; }
+    .cap-hint { font-size:11px; color:var(--maz-firouzeh-600); margin-top:4px; }
+
+    /* New class form */
+    .new-form { background:#fff; border:1.5px dashed var(--maz-firouzeh-300); border-radius:var(--maz-radius-lg); padding:16px; margin-bottom:16px; }
+    .form-row { display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end; }
+    .form-col { display:flex; flex-direction:column; gap:4px; }
+    .form-col label { font-size:11px; font-weight:700; color:var(--maz-gray-600); }
+    .form-col input, .form-col select { font-family:var(--maz-font); font-size:13px; padding:7px 10px; border:1.5px solid var(--maz-border); border-radius:8px; }
+
+    /* Edit modal */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .modal-box { background:#fff; border-radius:var(--maz-radius-lg); width:100%; max-width:420px; padding:24px; }
+    .modal-title { font-size:15px; font-weight:800; color:var(--maz-firouzeh-900); margin-bottom:16px; }
+    .modal-actions { display:flex; gap:8px; margin-top:16px; }
   `],
   template: `
     <div class="maz-page-header">
       <div class="maz-page-header__title">کلاسبندی</div>
+      <div class="page-actions">
+        <span style="font-size:12px;color:var(--maz-gray-400)">{{ classes().length }} کلاس</span>
+        <a class="maz-btn maz-btn--ghost maz-btn--sm" routerLink="/smart-class">🤖 کلاسبندی هوشمند</a>
+        <button class="maz-btn maz-btn--primary maz-btn--sm" (click)="showNew.set(true)">+ کلاس جدید</button>
+      </div>
     </div>
+
+    @if (showNew()) {
+      <div class="new-form">
+        <div style="font-size:13px;font-weight:800;color:var(--maz-firouzeh-900);margin-bottom:12px">کلاس جدید</div>
+        <div class="form-row">
+          <div class="form-col" style="flex:2">
+            <label>نام کلاس *</label>
+            <input [(ngModel)]="newName" placeholder="مثلاً: کلاس اول الف" />
+          </div>
+          <div class="form-col">
+            <label>ظرفیت</label>
+            <input type="number" [(ngModel)]="newCapacity" placeholder="۱۲" style="width:70px" />
+          </div>
+          <button class="maz-btn maz-btn--primary" [disabled]="!newName" (click)="createClass()">ثبت</button>
+          <button class="maz-btn maz-btn--ghost" (click)="showNew.set(false)">انصراف</button>
+        </div>
+      </div>
+    }
 
     @if (loading()) {
       <div class="maz-loading-overlay"><div class="maz-spinner"></div></div>
-    } @else {
+    }
 
-      <!-- New Class Button -->
-      <div class="classes-header">
-        <div style="font-size:13px;color:var(--maz-gray-500)">
-          {{ classes().length }} کلاس — سال تحصیلی {{ appState.activeYear()?.label ?? '—' }}
-        </div>
-        <button class="maz-btn maz-btn--primary" (click)="showNewForm.set(!showNewForm())">
-          + کلاس جدید
-        </button>
-      </div>
-
-      @if (showNewForm()) {
-        <div class="new-class-form">
-          <div style="font-size:14px;font-weight:800;color:var(--maz-firouzeh-900);margin-bottom:14px">ثبت کلاس جدید</div>
-          <div class="form-row">
-            <div>
-              <label>نام کلاس</label>
-              <input [(ngModel)]="newClassName" placeholder="مثلاً: کلاس اول الف" style="width:200px" />
+    <div class="class-grid">
+      @for (cls of classes(); track cls.id) {
+        <div class="class-card">
+          <!-- Header -->
+          <div class="card-head">
+            <span class="card-name">{{ cls.name }}</span>
+            <div class="card-actions-row">
+              <button class="maz-btn maz-btn--sm maz-btn--ghost" title="ویرایش" (click)="openEdit(cls)">✏️</button>
+              <button class="maz-btn maz-btn--sm maz-btn--ghost" title="حذف" (click)="deleteClass(cls)">🗑️</button>
             </div>
-            <div>
-              <label>ظرفیت (اختیاری)</label>
-              <input type="number" [(ngModel)]="newClassCapacity" placeholder="۲۰" style="width:80px" />
-            </div>
-            <button class="maz-btn maz-btn--primary" [disabled]="!newClassName" (click)="createClass()">ثبت</button>
-            <button class="maz-btn maz-btn--ghost" (click)="showNewForm.set(false)">انصراف</button>
           </div>
-        </div>
-      }
 
-      @if (unassignedStudents() > 0) {
-        <div class="maz-card" style="border-color:var(--maz-warning);background:#fffbeb;margin-bottom:20px">
-          <div class="unassigned-hint">
-            ⚠️ <strong>{{ unassignedStudents() }}</strong> دانش‌آموز هنوز به کلاسی تخصیص نیافته‌اند
-            <a routerLink="/students" style="margin-right:8px;color:var(--maz-firouzeh-600);font-size:12px">مشاهده دانش‌آموزان ←</a>
+          <!-- Meta chips -->
+          <div class="card-meta">
+            @for (cg of cls.classGrades; track cg.grade.id) {
+              <span class="chip chip-grade">{{ cg.grade.label }}</span>
+            }
+            <span class="chip chip-count">{{ activeStudentCount(cls) }} دانش‌آموز</span>
+            @if ((cls._phantoms?.length ?? 0) > 0) {
+              <span class="chip" style="background:#f5f3ff;color:#5b21b6">{{ cls._phantoms!.length }} فرضی</span>
+            }
+            @if (cls.teacherAssignments.length > 0) {
+              <span class="chip chip-teacher">{{ cls.teacherAssignments[0].user.firstName }} {{ cls.teacherAssignments[0].user.lastName }}</span>
+            }
+            @if (cls.teacherAssignments.length === 0) {
+              <span class="chip chip-warn">بدون معلم</span>
+            }
           </div>
-        </div>
-      }
 
-      <div class="class-grid">
-        @for (cls of classes(); track cls.id) {
-          <div class="class-card" [class.unassigned]="(cls._unassignedCount ?? 0) > 0">
-            <div class="class-name">{{ cls.name }}</div>
-            <div class="class-meta">
-              پایه‌ها: {{ cls.classGrades.map(g => g.grade.label).join('، ') || '—' }}
-            </div>
-            <div class="class-stats">
-              <span class="stat-chip">{{ cls._studentCount ?? 0 }} دانش‌آموز</span>
-              @if ((cls._phantoms?.length ?? 0) > 0) {
-                <span class="stat-chip" style="background:#f0f4f5">{{ cls._phantoms!.length }} فرضی</span>
-              }
-              @if ((cls._unassignedCount ?? 0) > 0) {
-                <span class="stat-chip warn">{{ cls._unassignedCount }} بدون کلاس</span>
-              }
-            </div>
-            <div class="class-actions">
-              <a class="maz-btn maz-btn--sm maz-btn--ghost" [routerLink]="['/students']" [queryParams]="{classId: cls.id}">
-                مشاهده دانش‌آموزان
-              </a>
-            </div>
-
-            <!-- بخش دانش‌آموزان فرضی -->
-            <div class="phantom-section">
-              <div class="phantom-title">
-                👻 دانش‌آموزان فرضی
-                <span style="font-size:10px;font-weight:400;color:var(--maz-gray-400)">(برای تخمین ظرفیت سال آینده)</span>
+          <!-- Students panel -->
+          @if (expandedStudents().has(cls.id)) {
+            <div class="students-panel">
+              <div class="students-panel-header">
+                <span>دانش‌آموزان ({{ activeStudentCount(cls) }} نفر)</span>
+                <button class="maz-btn maz-btn--sm maz-btn--ghost" style="padding:1px 6px;font-size:10px" (click)="toggleStudents(cls.id)">بستن ▲</button>
               </div>
-
-              @if (cls._phantoms?.length) {
-                <div class="phantom-list">
-                  @for (p of cls._phantoms!; track p.id) {
-                    <div class="phantom-item">
-                      <span class="phantom-name">{{ p.name }}</span>
-                      <span style="font-size:11px;color:var(--maz-gray-400)">{{ gradeLabel(p.gradeId, cls) }}</span>
-                      <button class="phantom-remove" (click)="removePhantom(cls, p.id)" title="حذف">✕</button>
-                    </div>
-                  }
+              @for (sa of cls.studentAssignments ?? []; track sa.id) {
+                <div class="student-row">
+                  <span class="gender-dot" [class.male]="sa.student.gender==='MALE'" [class.female]="sa.student.gender==='FEMALE'"></span>
+                  <span class="s-name">{{ sa.student.firstName }} {{ sa.student.lastName }}</span>
+                  <span class="s-grade">{{ sa.grade?.label }}</span>
+                  <a [routerLink]="['/students', sa.student.id]" class="maz-btn maz-btn--sm maz-btn--ghost" style="padding:2px 6px;font-size:10px">←</a>
                 </div>
               }
+              @if (!(cls.studentAssignments?.length)) {
+                <div style="padding:10px 15px;font-size:12px;color:var(--maz-gray-400)">هنوز دانش‌آموزی تخصیص نیافته</div>
+              }
+            </div>
+          } @else {
+            <div style="padding:6px 15px">
+              <button class="maz-btn maz-btn--sm maz-btn--ghost" style="font-size:11px" (click)="toggleStudents(cls.id)">مشاهده دانش‌آموزان ▼</button>
+            </div>
+          }
 
-              <div class="add-phantom-row">
-                <input
-                  placeholder="نام فرضی (اختیاری)"
-                  [(ngModel)]="phantomInputs[cls.id + '_name']"
-                  (keydown.enter)="addPhantom(cls)"
-                />
-                <select [(ngModel)]="phantomInputs[cls.id + '_grade']">
-                  <option value="">پایه —</option>
-                  @for (g of cls.classGrades; track g.grade.id) {
-                    <option [value]="g.grade.id">{{ g.grade.label }}</option>
+          <!-- Teacher assignment panel -->
+          <div class="teacher-panel">
+            <div class="teacher-label">معلم / دبیر</div>
+            @for (ta of cls.teacherAssignments; track ta.id) {
+              <div class="teacher-row">
+                <span class="teacher-name">{{ ta.user.firstName }} {{ ta.user.lastName }}</span>
+                @if (ta.subject) { <span style="font-size:10px;color:var(--maz-gray-400)">{{ ta.subject.label }}</span> }
+                <button class="rm-btn" title="حذف" (click)="removeTeacher(cls, ta.id)">✕</button>
+              </div>
+            }
+            @if (expandedTeacher().has(cls.id)) {
+              <div class="assign-row">
+                <select [(ngModel)]="teacherInputs[cls.id + '_user']" style="flex:1">
+                  <option value="">انتخاب معلم / دبیر</option>
+                  @for (t of teachers(); track t.id) {
+                    <option [value]="t.id">{{ t.firstName }} {{ t.lastName }}</option>
                   }
                 </select>
-                <button class="maz-btn maz-btn--sm maz-btn--primary" (click)="addPhantom(cls)">+ افزودن</button>
+                <button class="maz-btn maz-btn--sm maz-btn--primary" (click)="assignTeacher(cls)">تخصیص</button>
+                <button class="maz-btn maz-btn--sm maz-btn--ghost" (click)="toggleTeacher(cls.id)">انصراف</button>
               </div>
+            } @else {
+              <button class="maz-btn maz-btn--sm maz-btn--ghost" style="font-size:11px;margin-top:4px" (click)="toggleTeacher(cls.id)">+ افزودن معلم</button>
+            }
+          </div>
 
-              @if ((cls._phantoms?.length ?? 0) > 0) {
-                <div style="margin-top:8px;font-size:11px;color:var(--maz-gray-400)">
-                  ظرفیت تخمینی: {{ (cls._studentCount ?? 0) + (cls._phantoms?.length ?? 0) }} نفر
-                </div>
-              }
+          <!-- Phantom students -->
+          <div class="phantom-section">
+            <div class="phantom-title">👻 دانش‌آموزان فرضی (تخمین ظرفیت)</div>
+            @for (p of cls._phantoms ?? []; track p.id) {
+              <div class="phantom-row">
+                <span class="phantom-name">{{ p.name }}</span>
+                <span style="font-size:10px;color:var(--maz-gray-400)">{{ gradeLabel(p.gradeId, cls) }}</span>
+                <button class="rm-btn" (click)="removePhantom(cls, p.id)">✕</button>
+              </div>
+            }
+            <div class="add-phantom">
+              <input placeholder="نام (اختیاری)" [(ngModel)]="phantomInputs[cls.id+'_n']" (keydown.enter)="addPhantom(cls)" />
+              <select [(ngModel)]="phantomInputs[cls.id+'_g']">
+                <option value="">پایه</option>
+                @for (cg of cls.classGrades; track cg.grade.id) {
+                  <option [value]="cg.grade.id">{{ cg.grade.label }}</option>
+                }
+              </select>
+              <button class="maz-btn maz-btn--sm maz-btn--ghost" (click)="addPhantom(cls)">+</button>
             </div>
+            @if ((cls._phantoms?.length ?? 0) > 0) {
+              <div class="cap-hint">ظرفیت تخمینی: {{ activeStudentCount(cls) + (cls._phantoms?.length ?? 0) }} نفر</div>
+            }
           </div>
-        }
+        </div>
+      }
 
-        @if (!classes().length) {
-          <div class="maz-card" style="text-align:center;padding:48px;color:var(--maz-gray-400)">
-            هنوز کلاسی ثبت نشده است
+      @if (!loading() && !classes().length) {
+        <div class="maz-card" style="text-align:center;padding:48px;color:var(--maz-gray-400)">
+          هنوز کلاسی ثبت نشده — <a routerLink="/smart-class" style="color:var(--maz-firouzeh-600)">کلاسبندی هوشمند</a>
+        </div>
+      }
+    </div>
+
+    <!-- Edit modal -->
+    @if (editingClass()) {
+      <div class="modal-overlay" (click)="editingClass.set(null)">
+        <div class="modal-box" (click)="$event.stopPropagation()">
+          <div class="modal-title">ویرایش کلاس</div>
+          <div class="maz-form-field">
+            <label class="maz-label">نام کلاس</label>
+            <input class="maz-input" [(ngModel)]="editName" />
           </div>
-        }
+          <div class="modal-actions">
+            <button class="maz-btn maz-btn--primary" (click)="saveEdit()">ذخیره</button>
+            <button class="maz-btn maz-btn--ghost" (click)="editingClass.set(null)">انصراف</button>
+          </div>
+        </div>
       </div>
     }
   `,
 })
 export class ClassesComponent implements OnInit {
+  private http      = inject(HttpClient);
+  private lookupsApi = inject(LookupsApi);
   readonly appState = inject(AppStateService);
   readonly auth     = inject(AuthService);
-  private http      = inject(HttpClient);
   private base      = environment.apiUrl;
 
-  loading           = signal(true);
-  classes           = signal<ClassRoom[]>([]);
-  unassignedStudents = signal(0);
-  showNewForm       = signal(false);
-  newClassName      = '';
-  newClassCapacity: number | null = null;
+  loading         = signal(true);
+  classes         = signal<ClassRoom[]>([]);
+  teachers        = signal<any[]>([]);
+  showNew         = signal(false);
+  expandedStudents = signal<Set<number>>(new Set());
+  expandedTeacher = signal<Set<number>>(new Set());
+  editingClass    = signal<ClassRoom | null>(null);
+
+  newName = ''; newCapacity: number | null = null;
+  editName = '';
+  teacherInputs: Record<string, any> = {};
   phantomInputs: Record<string, any> = {};
 
-  ngOnInit() { this.loadClasses(); }
+  ngOnInit() { this.load(); this.loadTeachers(); }
 
-  loadClasses() {
-    const centerId = this.auth.isSuperuser() ? null : this.auth.centerIds()[0];
-    const params: any = { page: 1, pageSize: 200 };
-    if (centerId) params.centerId = centerId;
+  load() {
+    this.loading.set(true);
+    const centerId = this.auth.isSuperuser() ? undefined : this.auth.centerIds()[0];
+    const yearId   = this.appState.activeYearId();
+    const body: any = { page: 1, pageSize: 200 };
+    if (centerId) body.centerId = centerId;
+    if (yearId)   body.academicYearId = yearId;
 
-    this.http.post<any>(`${this.base}/classes/list`, params).subscribe({
+    this.http.post<any>(`${this.base}/classes/list`, body).subscribe({
       next: r => {
-        const cls = (r.data ?? r).map((c: any) => ({
-          ...c,
-          _phantoms: [],
-          _studentCount: c.studentCount ?? 0,
-        }));
-        this.classes.set(cls);
+        this.classes.set((r.data ?? r).map((c: any) => ({ ...c, _phantoms: [] })));
         this.loading.set(false);
       },
       error: () => this.loading.set(false),
     });
+  }
 
-    // تعداد دانش‌آموزان کلاسبندی‌نشده
-    if (centerId) {
-      const yearId = this.appState.activeYearId();
-      if (yearId) {
-        this.http.get<{ count: number }>(`${this.base}/students/unassigned-count?centerId=${centerId}&academicYearId=${yearId}`)
-          .subscribe({ next: r => this.unassignedStudents.set(r.count ?? 0), error: () => {} });
-      }
-    }
+  loadTeachers() {
+    this.http.post<any>(`${this.base}/users/list`, {
+      page: 1, pageSize: 200,
+      filters: [{ field: 'isActive', fieldType: 'boolean', operator: 'is_true', order: 1 }],
+    }).subscribe({
+      next: r => this.teachers.set((r.data ?? []).filter((u: any) =>
+        ['TEACHER', 'STAFF'].includes(u.userType)
+      )),
+      error: () => {},
+    });
   }
 
   createClass() {
-    if (!this.newClassName) return;
+    if (!this.newName) return;
     const centerId = this.auth.centerIds()[0];
-    const body: any = { name: this.newClassName };
+    const yearId   = this.appState.activeYearId();
+    const body: any = { name: this.newName };
     if (centerId) body.centerId = centerId;
-    if (this.newClassCapacity) body.capacity = this.newClassCapacity;
-    const yearId = this.appState.activeYearId();
-    if (yearId) body.academicYearId = yearId;
+    if (yearId)   body.academicYearId = yearId;
+    if (this.newCapacity) body.capacity = this.newCapacity;
 
     this.http.post<any>(`${this.base}/classes`, body).subscribe({
-      next: () => { this.newClassName = ''; this.newClassCapacity = null; this.showNewForm.set(false); this.loadClasses(); },
-      error: e => alert(e.error?.message ?? 'خطا در ثبت کلاس'),
+      next: () => { this.newName = ''; this.newCapacity = null; this.showNew.set(false); this.load(); },
+      error: e => alert(e.error?.message ?? 'خطا در ثبت'),
+    });
+  }
+
+  deleteClass(cls: ClassRoom) {
+    if (!confirm(`کلاس «${cls.name}» حذف شود؟`)) return;
+    this.http.delete(`${this.base}/classes/${cls.id}`).subscribe({
+      next: () => this.load(),
+      error: e => alert(e.error?.message ?? 'خطا در حذف'),
+    });
+  }
+
+  openEdit(cls: ClassRoom) { this.editingClass.set(cls); this.editName = cls.name; }
+  saveEdit() {
+    const cls = this.editingClass();
+    if (!cls) return;
+    this.http.patch(`${this.base}/classes/${cls.id}`, { name: this.editName }).subscribe({
+      next: () => { this.editingClass.set(null); this.load(); },
+      error: e => alert(e.error?.message ?? 'خطا'),
+    });
+  }
+
+  toggleStudents(id: number) {
+    const cls = this.classes().find(c => c.id === id);
+    if (!cls?.studentAssignments && !this.expandedStudents().has(id)) {
+      // load students for this class
+      this.http.get<any>(`${this.base}/classes/${id}`).subscribe({
+        next: full => {
+          this.classes.update(list => list.map(c => c.id === id
+            ? { ...c, studentAssignments: full.studentAssignments ?? [] }
+            : c
+          ));
+          this.expandedStudents.update(s => { const n = new Set(s); n.add(id); return n; });
+        },
+      });
+    } else {
+      this.expandedStudents.update(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    }
+  }
+
+  toggleTeacher(id: number) {
+    this.expandedTeacher.update(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  assignTeacher(cls: ClassRoom) {
+    const userId = this.teacherInputs[cls.id + '_user'];
+    if (!userId) return;
+    this.http.post(`${this.base}/classes/${cls.id}/teachers`, { userId: Number(userId) }).subscribe({
+      next: () => { this.teacherInputs[cls.id + '_user'] = ''; this.load(); this.expandedTeacher.update(s => { const n = new Set(s); n.delete(cls.id); return n; }); },
+      error: e => alert(e.error?.message ?? 'خطا'),
+    });
+  }
+
+  removeTeacher(cls: ClassRoom, assignmentId: number) {
+    if (!confirm('تخصیص معلم لغو شود؟')) return;
+    this.http.delete(`${this.base}/classes/teacher-assignments/${assignmentId}`).subscribe({
+      next: () => this.load(),
+      error: e => alert(e.error?.message ?? 'خطا'),
     });
   }
 
   addPhantom(cls: ClassRoom) {
-    const name  = this.phantomInputs[cls.id + '_name'] || `دانش‌آموز فرضی ${(cls._phantoms?.length ?? 0) + 1}`;
-    const grade = this.phantomInputs[cls.id + '_grade'] ? Number(this.phantomInputs[cls.id + '_grade']) : null;
-    const phantom: PhantomStudent = { id: Date.now().toString(), name, gradeId: grade, note: '' };
-    this.classes.update(list =>
-      list.map(c => c.id === cls.id
-        ? { ...c, _phantoms: [...(c._phantoms ?? []), phantom] }
-        : c
-      )
-    );
-    this.phantomInputs[cls.id + '_name']  = '';
-    this.phantomInputs[cls.id + '_grade'] = '';
+    const name  = this.phantomInputs[cls.id+'_n'] || `فرضی ${(cls._phantoms?.length ?? 0)+1}`;
+    const grade = this.phantomInputs[cls.id+'_g'] ? Number(this.phantomInputs[cls.id+'_g']) : null;
+    this.classes.update(l => l.map(c => c.id === cls.id
+      ? { ...c, _phantoms: [...(c._phantoms??[]), { id: Date.now().toString(), name, gradeId: grade }] }
+      : c
+    ));
+    this.phantomInputs[cls.id+'_n'] = ''; this.phantomInputs[cls.id+'_g'] = '';
   }
 
-  removePhantom(cls: ClassRoom, phantomId: string) {
-    this.classes.update(list =>
-      list.map(c => c.id === cls.id
-        ? { ...c, _phantoms: (c._phantoms ?? []).filter(p => p.id !== phantomId) }
-        : c
-      )
-    );
+  removePhantom(cls: ClassRoom, pid: string) {
+    this.classes.update(l => l.map(c => c.id === cls.id
+      ? { ...c, _phantoms: (c._phantoms??[]).filter(p => p.id !== pid) }
+      : c
+    ));
+  }
+
+  activeStudentCount(cls: ClassRoom): number {
+    return cls.studentAssignments?.length ?? cls._studentCount ?? 0;
   }
 
   gradeLabel(gradeId: number | null, cls: ClassRoom): string {

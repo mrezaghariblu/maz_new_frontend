@@ -1,4 +1,5 @@
 // src/app/layout/shell/shell.component.ts
+import { BreadcrumbComponent } from '../../shared/components/breadcrumb/breadcrumb.component';
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -17,7 +18,7 @@ interface NavItem {
 @Component({
   selector: 'maz-shell',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, BreadcrumbComponent],
   styles: [`
     .shell { display: flex; height: 100vh; overflow: hidden; }
 
@@ -167,7 +168,7 @@ interface NavItem {
 
         <div class="sidebar__brand">
           <div class="brand-logo">
-            <span class="brand-gem"><img src="/logo.png" alt="MAZ" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display='none'" /></span>
+            <span class="brand-gem"><img src="src\assets\images\logo.svg" alt="MAZ" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display='none'" /></span>
             <div class="brand-text" *ngIf="sidebarOpen()">
               <div class="brand-name">ماز</div>
               <div class="brand-sub">مدیریت استثنایی استان زنجان</div>
@@ -216,7 +217,8 @@ interface NavItem {
         </header>
 
         <main class="page-content">
-          <router-outlet />
+          <maz-breadcrumb />
+      <router-outlet />
         </main>
       </div>
 

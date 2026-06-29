@@ -14,11 +14,38 @@ import { formatShamsi } from '../../../shared/utils/shamsi.util';
 import { FilterCondition, SmartFilterRequest, ExcelExportRequest, Student, PagedResult } from '../../../core/models';
 
 const FILTER_FIELDS: FilterField[] = [
-  { key: 'firstName',  label: 'نام',           type: 'string'  },
-  { key: 'lastName',   label: 'نام خانوادگی',  type: 'string'  },
-  { key: 'nationalCode', label: 'کد ملی',      type: 'string'  },
-  { key: 'gender',     label: 'جنسیت',         type: 'enum', enumOptions: [{ value: 'MALE', label: 'پسر' }, { value: 'FEMALE', label: 'دختر' }] },
-  { key: 'isActive',   label: 'فعال',          type: 'boolean' },
+  // ─── اطلاعات شخصی ─────────────────────────────
+  { key: 'firstName',      label: 'نام',                type: 'string'  },
+  { key: 'lastName',       label: 'نام خانوادگی',       type: 'string'  },
+  { key: 'nationalCode',   label: 'کد ملی',             type: 'string'  },
+  { key: 'gender',         label: 'جنسیت',              type: 'enum',
+    enumOptions: [{ value: 'MALE', label: 'پسر' }, { value: 'FEMALE', label: 'دختر' }] },
+  { key: 'birthYearShamsi',label: 'سال تولد (شمسی)',    type: 'number'  },
+  { key: 'birthMonth',     label: 'ماه تولد',           type: 'number'  },
+  // ─── تحصیلی ───────────────────────────────────
+  { key: 'grade.label',    label: 'پایه تحصیلی',        type: 'string'  },
+  { key: 'educationLevel.label', label: 'مقطع تحصیلی', type: 'string'  },
+  { key: 'attendanceType', label: 'نوع حضور',            type: 'enum',
+    enumOptions: [
+      { value: 'SCHOOL_PRESENCE', label: 'حضوری' },
+      { value: 'HOME_BASED',      label: 'خانه‌محور' },
+      { value: 'DAY_CARE',        label: 'روزانه' },
+    ]},
+  // ─── مرکز و ناحیه ─────────────────────────────
+  { key: 'center.name',    label: 'نام مدرسه',           type: 'string'  },
+  { key: 'district.label', label: 'ناحیه',               type: 'string'  },
+  // ─── ولی قانونی ───────────────────────────────
+  { key: 'guardianName',   label: 'نام ولی قانونی',      type: 'string'  },
+  { key: 'guardianPhone',  label: 'تلفن ولی',            type: 'string'  },
+  { key: 'homePhone',      label: 'تلفن منزل',           type: 'string'  },
+  // ─── وضعیت ────────────────────────────────────
+  { key: 'isActive',       label: 'فعال',                type: 'boolean' },
+  { key: 'isMartyrFamily', label: 'خانواده شهید',        type: 'boolean' },
+  { key: 'isOrphan',       label: 'ایتام',               type: 'boolean' },
+  { key: 'isUnderWelfare', label: 'تحت پوشش بهزیستی',   type: 'boolean' },
+  { key: 'needsSpeechTherapy',      label: 'نیاز به گفتاردرمانی', type: 'boolean' },
+  { key: 'needsOccupationalTherapy',label: 'نیاز به کاردرمانی',   type: 'boolean' },
+  { key: 'needsPhysiotherapy',      label: 'نیاز به فیزیوتراپی',  type: 'boolean' },
 ];
 
 const EXCEL_COLS: AvailableColumn[] = [
@@ -184,4 +211,5 @@ export class StudentsListComponent implements OnInit {
       dto.filename ?? 'students'
     );
     this.showExcel = false;
-  }}
+  }
+}
