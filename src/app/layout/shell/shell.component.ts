@@ -168,7 +168,7 @@ interface NavItem {
 
         <div class="sidebar__brand">
           <div class="brand-logo">
-            <span class="brand-gem"><img src="src\assets\images\logo.svg" alt="MAZ" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display='none'" /></span>
+            <span class="brand-gem"><img src="../../../../assets/images/logo.svg" alt="MAZ" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display='none'" /></span>
             <div class="brand-text" *ngIf="sidebarOpen()">
               <div class="brand-name">ماز</div>
               <div class="brand-sub">مدیریت استثنایی استان زنجان</div>

@@ -40,7 +40,7 @@ import { Center, LookupGroups } from '../../../core/models';
               <input class="maz-input" formControlName="name" />
             </maz-form-field>
             <maz-form-field label="کد مرکز" [required]="true" [control]="f['organizationCode']">
-              <input class="maz-input" formControlName="code" />
+              <input class="maz-input" formControlName="organizationCode" />
             </maz-form-field>
             <maz-form-field label="نوع مرکز" [required]="true" [control]="f['centerTypeId']">
               <select class="maz-select" formControlName="centerTypeId">
@@ -135,6 +135,7 @@ export class CenterFormComponent implements OnInit {
   form = this.fb.group({
     name:         ['', Validators.required],
     organizationCode :         ['', Validators.required],
+    code :         ['', Validators.required],
     centerTypeId: [null as number | null, Validators.required],
     districtId:   [null as number | null],
     province:     ['', Validators.required],
@@ -170,6 +171,7 @@ export class CenterFormComponent implements OnInit {
   }
 
   submit() {
+    this.form.controls['code'].setValue(this.f['organizationCode'].value);
     if (this.form.invalid) { this.form.markAllAsTouched(); return; }
     this.saving.set(true);
     const val = this.form.getRawValue() as Partial<Center>;
