@@ -31,7 +31,7 @@ import { Center, LookupGroups } from '../../../core/models';
     </div>
 
     <div class="maz-card form-card">
-      <form [formGroup]="form" (ngSubmit)="submit()">
+      <form [formGroup]="form">
 
         <div class="section">
           <div class="section-title">اطلاعات پایه</div>
@@ -110,7 +110,7 @@ import { Center, LookupGroups } from '../../../core/models';
 
         <div class="form-actions">
           <a class="maz-btn maz-btn--ghost" routerLink="/centers">انصراف</a>
-          <button type="submit" class="maz-btn maz-btn--primary" [disabled]="saving()">
+          <button type="submit" (click)="submit()" class="maz-btn maz-btn--primary" [disabled]="saving()">
             @if (saving()) { <span class="maz-spinner" style="width:14px;height:14px;border-width:2px"></span> }
             {{ isEdit() ? 'ذخیره تغییرات' : 'ثبت مرکز' }}
           </button>
