@@ -39,7 +39,7 @@ import { Center, LookupGroups } from '../../../core/models';
             <maz-form-field label="نام مرکز" [required]="true" [control]="f['name']">
               <input class="maz-input" formControlName="name" />
             </maz-form-field>
-            <maz-form-field label="کد مرکز" [required]="true" [control]="f['code']">
+            <maz-form-field label="کد مرکز" [required]="true" [control]="f['organizationCode']">
               <input class="maz-input" formControlName="code" />
             </maz-form-field>
             <maz-form-field label="نوع مرکز" [required]="true" [control]="f['centerTypeId']">
@@ -134,7 +134,7 @@ export class CenterFormComponent implements OnInit {
 
   form = this.fb.group({
     name:         ['', Validators.required],
-    code:         ['', Validators.required],
+    organizationCode :         ['', Validators.required],
     centerTypeId: [null as number | null, Validators.required],
     districtId:   [null as number | null],
     province:     ['', Validators.required],

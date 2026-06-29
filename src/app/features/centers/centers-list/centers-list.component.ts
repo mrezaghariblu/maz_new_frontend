@@ -101,7 +101,7 @@ const EXCEL_COLS: AvailableColumn[] = [
                 <tr>
                   <td class="maz-text-muted">{{ rowNum(i) }}</td>
                   <td><strong>{{ c.name }}</strong></td>
-                  <td class="maz-text-muted maz-text-sm">{{ c.code }}</td>
+                  <td class="maz-text-muted maz-text-sm">{{ c.organizationCode  }}</td>
                   <td>
                     <span class="maz-badge maz-badge--info">{{ c.centerType?.label ?? '—' }}</span>
                   </td>

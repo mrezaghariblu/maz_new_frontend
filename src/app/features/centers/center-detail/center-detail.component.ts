@@ -48,7 +48,7 @@ import { Center } from '../../../core/models';
         <div style="flex:1">
           <div class="full-name">{{ center()!.name }}</div>
           <div class="meta">
-            <span>کد: {{ center()!.code }}</span>
+            <span>کد: {{ center()!.organizationCode  }}</span>
             <span>{{ center()!.centerType?.label ?? '—' }}</span>
             <span>{{ center()!.province }} — {{ center()!.city }}</span>
           </div>

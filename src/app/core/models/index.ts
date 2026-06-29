@@ -74,7 +74,7 @@ export interface CenterUserAssignment {
 export interface Center {
   id:           number;
   name:         string;
-  code:         string;
+  organizationCode : string;
   centerTypeId: number;
   centerType?:  LookupValue;
   province:     string;
